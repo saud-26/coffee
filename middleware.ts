@@ -48,9 +48,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const ADMIN_EMAILS = ["khansaood@rmc.edu.in", "saud@rmc.edu.in"];
-    
-    if (!ADMIN_EMAILS.includes(user.email || "")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.role !== "admin") {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/login";
       url.searchParams.set("error", "not_admin");

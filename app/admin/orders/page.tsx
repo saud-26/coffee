@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { OrderWithItems } from "@/lib/types";
-
-const STATUSES = ["pending", "brewing", "out_for_delivery", "delivered", "cancelled"];
+import { formatINR } from "@/lib/currency";
+import {
+  ORDER_STATUS_OPTIONS,
+  normalizeOrderStatus,
+  toLegacyOrderStatus,
+  type CanonicalOrderStatus,
+} from "@/lib/order-status";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -37,7 +42,7 @@ export default function AdminOrders() {
     setLoading(false);
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: CanonicalOrderStatus) => {
     setUpdating(orderId);
     const { error } = await supabase
       .from("orders")
@@ -45,9 +50,26 @@ export default function AdminOrders() {
       .eq("id", orderId);
     
     if (error) {
-      alert("Failed to update status");
+      const { error: legacyError } = await supabase
+        .from("orders")
+        .update({ status: toLegacyOrderStatus(newStatus) })
+        .eq("id", orderId);
+
+      if (legacyError) {
+        alert("Failed to update status");
+      } else {
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.id === orderId ? { ...order, status: newStatus } : order
+          )
+        );
+      }
     } else {
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
     }
     setUpdating(null);
   };
@@ -89,12 +111,12 @@ export default function AdminOrders() {
                       {new Date(order.created_at).toLocaleDateString()}
                     </td>
                     <td className="p-4 text-sm font-bold" style={{ color: "var(--coffee-text-primary)" }}>
-                      ${Number(order.total_price).toFixed(2)}
+                      {formatINR(Number(order.total_price))}
                     </td>
                     <td className="p-4">
                       <select
-                        value={order.status}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        value={normalizeOrderStatus(order.status)}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value as CanonicalOrderStatus)}
                         disabled={updating === order.id}
                         className="text-sm px-3 py-1.5 rounded-lg outline-none cursor-pointer"
                         style={{ 
@@ -103,8 +125,10 @@ export default function AdminOrders() {
                           color: "var(--coffee-text-primary)" 
                         }}
                       >
-                        {STATUSES.map(s => (
-                          <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
+                        {ORDER_STATUS_OPTIONS.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
                         ))}
                       </select>
                     </td>

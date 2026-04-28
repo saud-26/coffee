@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { HERO_BACKGROUND_URL } from "@/lib/coffee-config";
 
 const TOTAL_FRAMES = 184;
 const FRAME_PATH = "/frames/ezgif-frame-";
@@ -145,10 +146,23 @@ export default function HeroCanvasAnimation() {
       ref={containerRef}
       id="hero"
       className="relative hero-canvas-wrapper"
-      style={{ height: "500vh" }}
+      style={{
+        height: "500vh",
+        backgroundImage: `url(${HERO_BACKGROUND_URL})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
     >
       {/* Sticky canvas viewport */}
       <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <img
+            src={HERO_BACKGROUND_URL}
+            alt="Coffee hero background"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
         {/* Loading Screen */}
         {!isLoaded && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#1A0F0A]">

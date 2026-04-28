@@ -56,7 +56,16 @@ CREATE TABLE public.coffees (
 CREATE TABLE public.orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'brewing', 'out_for_delivery', 'delivered', 'cancelled')),
+  status TEXT DEFAULT 'payment_pending_verification' CHECK (
+    status IN (
+      'payment_pending_verification',
+      'pending',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled'
+    )
+  ),
   total_price NUMERIC(10,2) NOT NULL DEFAULT 0,
   shipping_name TEXT DEFAULT '',
   shipping_address TEXT DEFAULT '',
@@ -132,12 +141,13 @@ CREATE POLICY "Admins can view all order items" ON public.order_items FOR SELECT
 -- SEED DATA (Default coffees)
 -- ==========================================
 INSERT INTO public.coffees (name, description, price, thumbnail_url, origin, roast, weight, rating, reviews, tags, badge) VALUES
-('Ethiopian Yirgacheffe', 'Bright, fruity, and floral with notes of jasmine, bergamot, and sun-dried blueberry. A crown jewel of African coffee.', 24.99, 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&q=80&w=800', 'Yirgacheffe, Ethiopia', 'Light', '340g', 4.9, 342, ARRAY['Single Origin', 'Washed'], 'Best Seller'),
-('Colombian Supremo', 'Rich caramel sweetness with bright citrus acidity and a smooth, velvety finish. The quintessential specialty coffee.', 21.99, 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&q=80&w=800', 'Huila, Colombia', 'Medium', '340g', 4.8, 289, ARRAY['Single Origin', 'Natural'], ''),
-('Sumatra Mandheling', 'Earthy, full-bodied, and complex with deep chocolate undertones, cedar, and a lingering smoky sweetness.', 23.49, 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=800', 'North Sumatra, Indonesia', 'Dark', '340g', 4.7, 198, ARRAY['Single Origin', 'Wet-Hulled'], 'New Arrival'),
-('Guatemala Antigua', 'Spicy complexity with bittersweet chocolate, toasted almond, and a vibrant tangerine acidity that excites the palate.', 22.99, 'https://images.unsplash.com/photo-1497933321027-94483753822c?auto=format&fit=crop&q=80&w=800', 'Antigua, Guatemala', 'Medium-Dark', '340g', 4.8, 256, ARRAY['Single Origin', 'Volcanic Soil'], ''),
-('Kenya AA', 'Intensely bright with blackcurrant, grapefruit, and tomato notes. A bold, wine-like coffee for the adventurous.', 26.99, 'https://images.unsplash.com/photo-1521017432531-fbd92d744264?auto=format&fit=crop&q=80&w=800', 'Nyeri, Kenya', 'Light', '250g', 4.9, 174, ARRAY['Single Origin', 'Double Washed'], 'Award Winner'),
-('Brazil Santos', 'Smooth, low-acid cup with nutty sweetness, milk chocolate, and a gentle graham cracker finish. Everyday elegance.', 19.99, 'https://images.unsplash.com/photo-1442551389117-04c51d9d2d5d?auto=format&fit=crop&q=80&w=800', 'Minas Gerais, Brazil', 'Medium', '340g', 4.6, 412, ARRAY['Single Origin', 'Pulped Natural'], '');
+('Espresso', 'A rich, concentrated shot with velvety crema and deep cocoa notes. Perfect for a bold wake-up.', 149, 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=800', 'Chikmagalur, India', 'Dark', '60ml', 4.9, 502, ARRAY['Classic', 'Strong'], 'Best Seller'),
+('Cappuccino', 'Smooth espresso balanced with steamed milk and thick foam for a creamy, comforting sip.', 199, 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800', 'Coorg, India', 'Medium', '220ml', 4.8, 438, ARRAY['Creamy', 'Cafe Favorite'], ''),
+('Latte', 'Silky steamed milk and espresso with a mellow flavor profile and naturally sweet finish.', 219, 'https://images.unsplash.com/photo-1561882468-9110e03e0f78?w=800', 'Araku Valley, India', 'Medium', '250ml', 4.7, 376, ARRAY['Smooth', 'Everyday'], 'New Arrival'),
+('Cold Brew', 'Slow-steeped over 16 hours for low acidity, chocolate undertones, and a crisp finish over ice.', 249, 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800', 'Bababudangiri, India', 'Medium-Dark', '300ml', 4.9, 291, ARRAY['Chilled', 'Refreshing'], ''),
+('Americano', 'A clean, aromatic cup that keeps espresso intensity while adding a lighter, longer sip.', 179, 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=800', 'Wayanad, India', 'Medium', '240ml', 4.6, 322, ARRAY['Balanced', 'Classic'], ''),
+('Mocha', 'Espresso with real cocoa and steamed milk, creating a dessert-like cup for chocolate lovers.', 229, 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?w=800', 'Nilgiris, India', 'Medium', '250ml', 4.8, 247, ARRAY['Chocolate', 'Rich'], ''),
+('Signature Combo Bundle', 'A curated combo of best-selling coffee favorites for sharing at home or gifting to coffee lovers.', 599, 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=800', 'Brew & Co Roastery', 'Medium-Dark', '6 Cups', 4.9, 160, ARRAY['Combo', 'Bundle'], 'Value Pack');
 
 -- ==========================================
 -- SET ADMIN USER (run AFTER admin signs up)

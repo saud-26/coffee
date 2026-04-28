@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Coffee } from "@/lib/types";
+import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
 
 interface ProductFormProps {
   initialData?: Partial<Coffee>;
@@ -19,7 +20,7 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    price: initialData?.price || 0,
+    price: getINRPriceByName(initialData?.name || "", Number(initialData?.price) || 0),
     origin: initialData?.origin || "",
     roast: initialData?.roast || "Medium",
     weight: initialData?.weight || "340g",
@@ -28,6 +29,15 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
     in_stock: initialData?.in_stock ?? true,
     thumbnail_url: initialData?.thumbnail_url || "",
   });
+
+  const handleNameChange = (name: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      name,
+      price: getINRPriceByName(name, Number(prev.price) || 0),
+      thumbnail_url: prev.thumbnail_url || getCoffeeImageByName(name),
+    }));
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -100,11 +110,11 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Name</label>
-            <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} style={inputStyle} />
+            <input required type="text" value={formData.name} onChange={e => handleNameChange(e.target.value)} className={inputClass} style={inputStyle} />
           </div>
           <div>
-            <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Price ($)</label>
-            <input required type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className={inputClass} style={inputStyle} />
+            <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Price (₹)</label>
+            <input required type="number" step="1" min={0} value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className={inputClass} style={inputStyle} />
           </div>
         </div>
 
@@ -145,7 +155,22 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
         </div>
 
         <div>
-          <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Image</label>
+          <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Image URL</label>
+          <input
+            type="url"
+            value={formData.thumbnail_url}
+            onChange={e => setFormData({...formData, thumbnail_url: e.target.value})}
+            className={inputClass}
+            style={inputStyle}
+            placeholder="https://images.unsplash.com/..."
+          />
+          <p className="text-xs mt-2" style={{ color: "var(--coffee-text-secondary)" }}>
+            You can paste a public image URL (recommended for Unsplash CDN).
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Or upload image file</label>
           <div className="flex items-center gap-4">
             {formData.thumbnail_url && (
               <img src={formData.thumbnail_url} alt="Thumbnail preview" className="w-20 h-20 object-cover rounded-xl border" style={{ borderColor: "var(--coffee-border)" }} />

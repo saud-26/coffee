@@ -14,8 +14,31 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
   const errorParam = searchParams.get("error");
-  const [error, setError] = useState(errorParam ? `Access Denied: ${errorParam}` : "");
+  const [error, setError] = useState(
+    errorParam === "not_admin"
+      ? "Access denied. This account does not have admin permissions."
+      : errorParam
+        ? `Access Denied: ${errorParam}`
+        : ""
+  );
   const supabase = createClient();
+
+  const resolvePostLoginRoute = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return redirect;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.role === "admin") {
+      return "/admin";
+    }
+
+    return redirect;
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +54,8 @@ function LoginForm() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push(redirect);
+      const target = await resolvePostLoginRoute();
+      router.push(target);
       router.refresh();
     }
   };

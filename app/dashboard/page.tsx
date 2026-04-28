@@ -5,14 +5,8 @@ import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import type { OrderWithItems, Profile } from "@/lib/types";
-
-const STATUS_MAP: Record<string, { label: string; color: string; icon: string }> = {
-  pending: { label: "Pending", color: "#FFD700", icon: "⏳" },
-  brewing: { label: "Brewing", color: "#D4A574", icon: "☕" },
-  out_for_delivery: { label: "Out for Delivery", color: "#4F9C8F", icon: "🚚" },
-  delivered: { label: "Delivered", color: "#22C55E", icon: "✅" },
-  cancelled: { label: "Cancelled", color: "#EF4444", icon: "❌" },
-};
+import { formatINR } from "@/lib/currency";
+import { ORDER_STATUS_DISPLAY, normalizeOrderStatus } from "@/lib/order-status";
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -65,7 +59,7 @@ export default function DashboardPage() {
             <span className="font-['Playfair_Display'] text-xl font-bold" style={{ color: "var(--coffee-text-primary)" }}>BREW <span style={{ color: "var(--coffee-accent)" }}>&</span> CO.</span>
           </Link>
           <div className="flex items-center gap-3">
-            {(profile?.role === "admin" || (profile?.email && ["khansaood@rmc.edu.in", "saud@rmc.edu.in"].includes(profile.email))) && (
+            {profile?.role === "admin" && (
               <Link href="/admin" className="glass-card px-4 py-1.5 rounded-full text-xs font-medium hover:border-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-accent)", border: "1px solid var(--coffee-accent)" }}>Admin Panel</Link>
             )}
             <Link href="/" className="text-xs" style={{ color: "var(--coffee-text-secondary)" }}>Store</Link>
@@ -87,9 +81,17 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {[
             { label: "Total Orders", value: orders.length, icon: "📦" },
-            { label: "Pending", value: orders.filter((o) => o.status === "pending").length, icon: "⏳" },
-            { label: "Delivered", value: orders.filter((o) => o.status === "delivered").length, icon: "✅" },
-            { label: "Total Spent", value: `$${orders.reduce((s, o) => s + Number(o.total_price), 0).toFixed(2)}`, icon: "💰" },
+            {
+              label: "Pending",
+              value: orders.filter((o) =>
+                ["payment_pending_verification", "pending", "processing"].includes(
+                  normalizeOrderStatus(o.status)
+                )
+              ).length,
+              icon: "⏳",
+            },
+            { label: "Delivered", value: orders.filter((o) => normalizeOrderStatus(o.status) === "delivered").length, icon: "✅" },
+            { label: "Total Spent", value: formatINR(orders.reduce((s, o) => s + Number(o.total_price), 0)), icon: "💰" },
           ].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="glass-card rounded-xl p-5">
               <span className="text-2xl">{stat.icon}</span>
@@ -113,7 +115,7 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-4">
             {orders.map((order, i) => {
-              const status = STATUS_MAP[order.status] || STATUS_MAP.pending;
+              const status = ORDER_STATUS_DISPLAY[normalizeOrderStatus(order.status)];
               return (
                 <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card rounded-xl p-5">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -133,7 +135,7 @@ export default function DashboardPage() {
                       <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: `${status.color}20`, color: status.color, border: `1px solid ${status.color}40` }}>
                         {status.label}
                       </span>
-                      <span className="text-lg font-bold" style={{ color: "var(--coffee-text-primary)" }}>${Number(order.total_price).toFixed(2)}</span>
+                      <span className="text-lg font-bold" style={{ color: "var(--coffee-text-primary)" }}>{formatINR(Number(order.total_price))}</span>
                     </div>
                   </div>
                 </motion.div>

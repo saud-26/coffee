@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/lib/store/cart";
 import type { Coffee } from "@/lib/types";
+import { formatINR } from "@/lib/currency";
+import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
 
 function StarRating({ rating, reviews }: { rating: number; reviews: number }) {
   const fullStars = Math.floor(rating);
@@ -26,9 +28,11 @@ function StarRating({ rating, reviews }: { rating: number; reviews: number }) {
 function ProductCard({ product, index }: { product: Coffee; index: number }) {
   const addItem = useCartStore((s) => s.addItem);
   const [added, setAdded] = useState(false);
+  const displayPrice = getINRPriceByName(product.name, Number(product.price));
+  const productImage = product.thumbnail_url || getCoffeeImageByName(product.name, index);
 
   const handleAdd = () => {
-    addItem(product);
+    addItem({ ...product, price: displayPrice, thumbnail_url: productImage });
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
   };
@@ -42,16 +46,7 @@ function ProductCard({ product, index }: { product: Coffee; index: number }) {
       className="product-card glass-card rounded-2xl overflow-hidden group"
     >
       <div className="relative h-56 overflow-hidden" style={{ backgroundColor: "var(--coffee-bg-secondary)" }}>
-        {product.thumbnail_url ? (
-          <img src={product.thumbnail_url} alt={product.name} className="w-full h-full object-cover product-image" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#3D2820] to-[#2D1810]">
-            <div className="text-center">
-              <span className="text-6xl block mb-2 product-image opacity-80 group-hover:opacity-100 transition-opacity">☕</span>
-              <span className="text-xs uppercase tracking-widest font-medium" style={{ color: "var(--coffee-text-secondary)" }}>{product.roast} Roast</span>
-            </div>
-          </div>
-        )}
+        <img src={productImage} alt={product.name} className="w-full h-full object-cover product-image" />
         {product.badge && (
           <div className="absolute top-3 left-3 z-10">
             <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-wide bg-[var(--coffee-accent)] text-white">{product.badge}</span>
@@ -71,7 +66,7 @@ function ProductCard({ product, index }: { product: Coffee; index: number }) {
         <p className="text-sm leading-relaxed mb-4 line-clamp-2" style={{ color: "var(--coffee-text-secondary)" }}>{product.description}</p>
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold" style={{ color: "var(--coffee-text-primary)" }}>${product.price}</span>
+            <span className="text-2xl font-bold" style={{ color: "var(--coffee-text-primary)" }}>{formatINR(displayPrice)}</span>
             <span className="text-xs ml-1" style={{ color: "var(--coffee-text-secondary)" }}>/ {product.weight}</span>
           </div>
           <button onClick={handleAdd} disabled={!product.in_stock} className={`px-5 py-2 rounded-full text-sm font-semibold tracking-wide flex items-center gap-2 transition-all ${added ? "bg-green-600" : "btn-accent"} ${!product.in_stock ? "opacity-50 cursor-not-allowed" : ""}`} id={`add-to-cart-${product.id}`}>
@@ -98,7 +93,15 @@ export default function ProductShowcase() {
   useEffect(() => {
     const fetchCoffees = async () => {
       const { data, error } = await supabase.from("coffees").select("*").eq("in_stock", true).order("created_at", { ascending: true });
-      if (data) setCoffees(data as Coffee[]);
+      if (data) {
+        setCoffees(
+          (data as Coffee[]).map((coffee, index) => ({
+            ...coffee,
+            price: getINRPriceByName(coffee.name, Number(coffee.price)),
+            thumbnail_url: coffee.thumbnail_url || getCoffeeImageByName(coffee.name, index),
+          }))
+        );
+      }
       setLoading(false);
     };
     fetchCoffees();

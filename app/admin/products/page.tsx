@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Coffee } from "@/lib/types";
 import Link from "next/link";
+import { formatINR } from "@/lib/currency";
+import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
 
 export default function AdminProducts() {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -21,9 +24,31 @@ export default function AdminProducts() {
       .order("created_at", { ascending: false });
     
     if (data) {
-      setCoffees(data as Coffee[]);
+      setCoffees(
+        (data as Coffee[]).map((coffee, index) => ({
+          ...coffee,
+          price: getINRPriceByName(coffee.name, Number(coffee.price)),
+          thumbnail_url: coffee.thumbnail_url || getCoffeeImageByName(coffee.name, index),
+        }))
+      );
     }
     setLoading(false);
+  };
+
+  const handleDelete = async (coffee: Coffee) => {
+    const shouldDelete = window.confirm(`Delete "${coffee.name}"? This action cannot be undone.`);
+    if (!shouldDelete) return;
+
+    setDeletingId(coffee.id);
+    const { error } = await supabase.from("coffees").delete().eq("id", coffee.id);
+    setDeletingId(null);
+
+    if (error) {
+      alert("Failed to delete product.");
+      return;
+    }
+
+    setCoffees((prev) => prev.filter((item) => item.id !== coffee.id));
   };
 
   return (
@@ -49,19 +74,23 @@ export default function AdminProducts() {
           {coffees.map((coffee) => (
             <div key={coffee.id} className="glass-card rounded-2xl overflow-hidden flex flex-col">
               <div className="relative h-48 bg-[var(--coffee-bg-secondary)] border-b border-[var(--coffee-border)]">
-                {coffee.thumbnail_url ? (
-                  <img src={coffee.thumbnail_url} alt={coffee.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-4xl">☕</div>
-                )}
+                <img src={coffee.thumbnail_url} alt={coffee.name} className="w-full h-full object-cover" />
                 {!coffee.in_stock && (
                   <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">Out of Stock</div>
                 )}
               </div>
               <div className="p-5 flex-1 flex flex-col">
                 <h3 className="font-['Playfair_Display'] text-xl font-bold mb-1" style={{ color: "var(--coffee-text-primary)" }}>{coffee.name}</h3>
-                <p className="text-sm mb-4" style={{ color: "var(--coffee-accent)" }}>${coffee.price.toFixed(2)}</p>
-                <div className="mt-auto pt-4 border-t border-[var(--coffee-border)] flex justify-end">
+                <p className="text-sm mb-4" style={{ color: "var(--coffee-accent)" }}>{formatINR(Number(coffee.price))}</p>
+                <div className="mt-auto pt-4 border-t border-[var(--coffee-border)] flex justify-between items-center gap-2">
+                  <button
+                    onClick={() => handleDelete(coffee)}
+                    disabled={deletingId === coffee.id}
+                    className="text-sm font-medium hover:text-red-400 transition-colors disabled:opacity-50"
+                    style={{ color: "var(--coffee-text-secondary)" }}
+                  >
+                    {deletingId === coffee.id ? "Deleting..." : "Delete"}
+                  </button>
                   <Link 
                     href={`/admin/products/${coffee.id}`}
                     className="text-sm font-medium hover:text-[var(--coffee-accent)] transition-colors"

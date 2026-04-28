@@ -28,7 +28,15 @@ export interface Coffee {
 export interface Order {
   id: string;
   user_id: string;
-  status: "pending" | "brewing" | "out_for_delivery" | "delivered" | "cancelled";
+  status:
+    | "payment_pending_verification"
+    | "pending"
+    | "processing"
+    | "shipped"
+    | "delivered"
+    | "cancelled"
+    | "brewing"
+    | "out_for_delivery";
   total_price: number;
   shipping_name: string;
   shipping_address: string;

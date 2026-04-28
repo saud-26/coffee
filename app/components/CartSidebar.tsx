@@ -6,6 +6,8 @@ import { useCartStore } from "@/lib/store/cart";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
+import { formatINR } from "@/lib/currency";
+import { COFFEE_IMAGES } from "@/lib/coffee-config";
 
 export default function CartSidebar() {
   const { items, removeItem, updateQuantity, totalPrice, totalItems, clearCart } = useCartStore();
@@ -141,10 +143,15 @@ export default function CartSidebar() {
                 ) : (
                   items.map((item) => (
                     <div key={item.coffee.id} className="glass-card rounded-xl p-4 flex gap-4">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#3D2820] to-[#2D1810] flex items-center justify-center text-2xl shrink-0">☕</div>
+                      <img
+                        src={item.coffee.thumbnail_url || COFFEE_IMAGES.beans}
+                        alt={item.coffee.name}
+                        className="w-16 h-16 rounded-lg object-cover shrink-0 border"
+                        style={{ borderColor: "var(--coffee-border)" }}
+                      />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-semibold truncate" style={{ color: "var(--coffee-text-primary)" }}>{item.coffee.name}</h4>
-                        <p className="text-xs" style={{ color: "var(--coffee-text-secondary)" }}>${item.coffee.price.toFixed(2)}</p>
+                        <p className="text-xs" style={{ color: "var(--coffee-text-secondary)" }}>{formatINR(item.coffee.price)}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <button onClick={() => updateQuantity(item.coffee.id, item.quantity - 1)} className="w-6 h-6 rounded-full flex items-center justify-center text-xs" style={{ backgroundColor: "rgba(61, 40, 32, 0.5)", border: "1px solid var(--coffee-border)", color: "var(--coffee-text-primary)" }}>−</button>
                           <span className="text-sm font-medium" style={{ color: "var(--coffee-text-primary)" }}>{item.quantity}</span>
@@ -153,7 +160,7 @@ export default function CartSidebar() {
                       </div>
                       <div className="flex flex-col items-end justify-between">
                         <button onClick={() => removeItem(item.coffee.id)} className="text-xs hover:text-red-400 transition-colors" style={{ color: "var(--coffee-text-secondary)" }}>✕</button>
-                        <span className="text-sm font-bold" style={{ color: "var(--coffee-text-primary)" }}>${(item.coffee.price * item.quantity).toFixed(2)}</span>
+                        <span className="text-sm font-bold" style={{ color: "var(--coffee-text-primary)" }}>{formatINR(item.coffee.price * item.quantity)}</span>
                       </div>
                     </div>
                   ))
@@ -163,10 +170,10 @@ export default function CartSidebar() {
               {/* Footer */}
               {items.length > 0 && (
                 <div className="p-6 space-y-4" style={{ borderTop: "1px solid var(--coffee-border)" }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm" style={{ color: "var(--coffee-text-secondary)" }}>Subtotal</span>
-                    <span className="text-xl font-bold" style={{ color: "var(--coffee-text-primary)" }}>${totalPrice().toFixed(2)}</span>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm" style={{ color: "var(--coffee-text-secondary)" }}>Subtotal</span>
+                  <span className="text-xl font-bold" style={{ color: "var(--coffee-text-primary)" }}>{formatINR(totalPrice())}</span>
+                </div>
                   <Link href="/checkout" onClick={() => setIsOpen(false)} className="block w-full btn-accent btn-shimmer py-3 rounded-xl text-sm font-semibold tracking-wide uppercase text-center">
                     Proceed to Checkout
                   </Link>
