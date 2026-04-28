@@ -30,33 +30,33 @@ export default function AdminDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const supabase = createClient();
 
+  const fetchDashboardData = async () => {
+    const [
+      { data: ordersData, count: ordersCount },
+      { count: productsCount },
+      { count: usersCount },
+    ] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("*, order_items(*), profiles(email, full_name)", { count: "exact" })
+        .order("created_at", { ascending: false }),
+      supabase.from("coffees").select("*", { count: "exact", head: true }),
+      supabase.from("profiles").select("*", { count: "exact", head: true }),
+    ]);
+
+    const allOrders = (ordersData as OrderWithItems[] | null) ?? [];
+
+    setOrders(allOrders);
+    setStats({
+      totalOrders: ordersCount || 0,
+      totalRevenue: allOrders.reduce((acc, order) => acc + Number(order.total_price), 0),
+      totalUsers: usersCount || 0,
+      totalProducts: productsCount || 0,
+    });
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      const [
-        { data: ordersData, count: ordersCount },
-        { count: productsCount },
-        { count: usersCount },
-      ] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("*, order_items(*), profiles(email, full_name)", { count: "exact" })
-          .order("created_at", { ascending: false }),
-        supabase.from("coffees").select("*", { count: "exact", head: true }),
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-      ]);
-
-      const allOrders = (ordersData as OrderWithItems[] | null) ?? [];
-
-      setOrders(allOrders);
-      setStats({
-        totalOrders: ordersCount || 0,
-        totalRevenue: allOrders.reduce((acc, order) => acc + Number(order.total_price), 0),
-        totalUsers: usersCount || 0,
-        totalProducts: productsCount || 0,
-      });
-      setLoading(false);
-    };
-
     fetchDashboardData();
 
     const channel = supabase
@@ -73,6 +73,8 @@ export default function AdminDashboard() {
 
   const handleStatusChange = async (orderId: string, newStatus: CanonicalOrderStatus) => {
     setUpdating(orderId);
+    let didUpdate = false;
+
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -89,11 +91,16 @@ export default function AdminDashboard() {
         setUpdating(null);
         return;
       }
+
+      didUpdate = true;
+    } else {
+      didUpdate = true;
     }
 
-    setOrders((prev) =>
-      prev.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
-    );
+    if (didUpdate) {
+      await fetchDashboardData();
+    }
+
     setUpdating(null);
   };
 

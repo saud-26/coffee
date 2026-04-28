@@ -44,6 +44,8 @@ export default function AdminOrders() {
 
   const handleStatusChange = async (orderId: string, newStatus: CanonicalOrderStatus) => {
     setUpdating(orderId);
+    let didUpdate = false;
+
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -58,19 +60,16 @@ export default function AdminOrders() {
       if (legacyError) {
         alert("Failed to update status");
       } else {
-        setOrders((prev) =>
-          prev.map((order) =>
-            order.id === orderId ? { ...order, status: newStatus } : order
-          )
-        );
+        didUpdate = true;
       }
     } else {
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
+      didUpdate = true;
     }
+
+    if (didUpdate) {
+      await fetchOrders();
+    }
+
     setUpdating(null);
   };
 

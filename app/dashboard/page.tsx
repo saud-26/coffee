@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -11,38 +11,93 @@ import { ORDER_STATUS_DISPLAY, normalizeOrderStatus } from "@/lib/order-status";
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    let liveChannel: ReturnType<typeof supabase.channel> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profileData) setProfile(profileData);
-
+    const fetchOrders = async (uid: string) => {
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*, order_items(*)")
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .order("created_at", { ascending: false });
 
       if (ordersData) setOrders(ordersData as OrderWithItems[]);
-      setLoading(false);
     };
-    fetchData();
 
-    // Real-time subscription for order updates
-    const channel = supabase
-      .channel("orders-updates")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
-        setOrders((prev) => prev.map((o) => (o.id === payload.new.id ? { ...o, ...payload.new } : o)));
-      })
-      .subscribe();
+    const initialize = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+      setUserId(user.id);
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) setProfile(profileData);
+      await fetchOrders(user.id);
+      setLoading(false);
+
+      // Real-time subscription for this user's order updates.
+      liveChannel = supabase
+        .channel(`orders-updates-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `user_id=eq.${user.id}`,
+          },
+          async () => {
+            await fetchOrders(user.id);
+          }
+        )
+        .subscribe();
+
+      // Fallback polling so status changes still reflect even when realtime is unavailable.
+      pollTimer = setInterval(() => {
+        void fetchOrders(user.id);
+      }, 10000);
+    };
+
+    void initialize();
+
+    return () => {
+      if (liveChannel) supabase.removeChannel(liveChannel);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const refreshOnFocus = () => {
+      void supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => {
+          if (data) setOrders(data as OrderWithItems[]);
+        });
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, [supabase, userId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
