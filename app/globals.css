@@ -1,26 +1,181 @@
 @import "tailwindcss";
 
+/* ===== Coffee Brand Custom Properties ===== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --coffee-bg-primary: #2D1810;
+  --coffee-bg-secondary: #3D2820;
+  --coffee-border: #5A4034;
+  --coffee-text-primary: #F5E6D3;
+  --coffee-text-secondary: #C9B8A0;
+  --coffee-accent: #4F9C8F;
+  --coffee-gold: #FFD700;
+  --coffee-gradient: linear-gradient(135deg, #2D1810 0%, #1A0F0A 100%);
+  --coffee-hero-bg: #1A0F0A;
+  --coffee-bean: #D4A574;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ===== Base Styles ===== */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--coffee-bg-primary);
+  color: var(--coffee-text-primary);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ===== Typography ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* ===== Custom Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--coffee-bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--coffee-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--coffee-bean);
+}
+
+/* ===== Utility Classes ===== */
+.coffee-gradient {
+  background: var(--coffee-gradient);
+}
+
+.text-glow {
+  text-shadow: 0 0 40px rgba(212, 165, 116, 0.3), 0 0 80px rgba(212, 165, 116, 0.1);
+}
+
+.text-glow-strong {
+  text-shadow: 0 0 20px rgba(245, 230, 211, 0.4), 0 0 60px rgba(212, 165, 116, 0.2);
+}
+
+/* ===== Card Glassmorphism ===== */
+.glass-card {
+  background: rgba(61, 40, 32, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(90, 64, 52, 0.4);
+}
+
+/* ===== Button Styles ===== */
+.btn-accent {
+  background-color: var(--coffee-accent);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-accent:hover {
+  background-color: #5DB8A9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 156, 143, 0.35);
+}
+
+/* ===== Grain Texture Overlay ===== */
+.grain-overlay::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.03;
+  z-index: 1000;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* ===== Star Rating ===== */
+.star-gold {
+  color: var(--coffee-gold);
+}
+
+/* ===== Floating Animation ===== */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px) rotate(5deg); }
+  50% { transform: translateY(-20px) rotate(-5deg); }
+}
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
+}
+
+/* ===== Pulse Glow ===== */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(79, 156, 143, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(79, 156, 143, 0.4); }
+}
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* ===== Hero Canvas Section ===== */
+.hero-canvas-wrapper {
+  background-color: var(--coffee-hero-bg);
+}
+
+/* ===== Section Transitions ===== */
+.section-divider {
+  background: linear-gradient(
+    to bottom,
+    var(--coffee-hero-bg) 0%,
+    var(--coffee-bg-primary) 100%
+  );
+  height: 120px;
+}
+
+/* ===== Product Card Hover ===== */
+.product-card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.product-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.product-card:hover .product-image {
+  transform: scale(1.05);
+}
+.product-image {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Navigation ===== */
+.nav-glass {
+  background: rgba(26, 15, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(90, 64, 52, 0.3);
+}
+
+/* ===== CTA Shimmer ===== */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.btn-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--coffee-accent) 0%,
+    #6BC4B5 50%,
+    var(--coffee-accent) 100%
+  );
+  background-size: 200% auto;
+}
+.btn-shimmer:hover {
+  animation: shimmer 2s linear infinite;
 }
