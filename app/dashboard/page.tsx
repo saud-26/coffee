@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    let isCancelled = false;
     let liveChannel: ReturnType<typeof supabase.channel> | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -26,13 +27,15 @@ export default function DashboardPage() {
         .eq("user_id", uid)
         .order("created_at", { ascending: false });
 
-      if (ordersData) setOrders(ordersData as OrderWithItems[]);
+      if (!isCancelled && ordersData) setOrders(ordersData as OrderWithItems[]);
     };
 
     const initialize = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (isCancelled) return;
+
       if (!user) {
         setLoading(false);
         return;
@@ -45,14 +48,27 @@ export default function DashboardPage() {
         .select("*")
         .eq("id", user.id)
         .single();
+      if (isCancelled) return;
 
       if (profileData) setProfile(profileData);
       await fetchOrders(user.id);
+      if (isCancelled) return;
+
       setLoading(false);
 
       // Real-time subscription for this user's order updates.
+      const channelName = `orders-updates-${user.id}`;
+      const existingChannels = supabase
+        .getChannels()
+        .filter((channel) => channel.topic === `realtime:${channelName}`);
+
+      if (existingChannels.length > 0) {
+        await Promise.all(existingChannels.map((channel) => supabase.removeChannel(channel)));
+      }
+      if (isCancelled) return;
+
       liveChannel = supabase
-        .channel(`orders-updates-${user.id}`)
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -76,7 +92,8 @@ export default function DashboardPage() {
     void initialize();
 
     return () => {
-      if (liveChannel) supabase.removeChannel(liveChannel);
+      isCancelled = true;
+      if (liveChannel) void supabase.removeChannel(liveChannel);
       if (pollTimer) clearInterval(pollTimer);
     };
   }, [supabase]);
