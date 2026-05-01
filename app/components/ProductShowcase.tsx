@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/lib/store/cart";
 import type { Coffee } from "@/lib/types";
 import { formatINR } from "@/lib/currency";
-import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
+import { getCoffeeImageByName } from "@/lib/coffee-config";
 
 function StarRating({ rating, reviews }: { rating: number; reviews: number }) {
   const fullStars = Math.floor(rating);
@@ -28,7 +28,7 @@ function StarRating({ rating, reviews }: { rating: number; reviews: number }) {
 function ProductCard({ product, index }: { product: Coffee; index: number }) {
   const addItem = useCartStore((s) => s.addItem);
   const [added, setAdded] = useState(false);
-  const displayPrice = getINRPriceByName(product.name, Number(product.price));
+  const displayPrice = Number(product.price);
   const productImage = product.thumbnail_url || getCoffeeImageByName(product.name, index);
 
   const handleAdd = () => {
@@ -92,12 +92,12 @@ export default function ProductShowcase() {
 
   useEffect(() => {
     const fetchCoffees = async () => {
-      const { data, error } = await supabase.from("coffees").select("*").eq("in_stock", true).order("created_at", { ascending: true });
+      const { data } = await supabase.from("coffees").select("*").eq("in_stock", true).order("created_at", { ascending: true });
       if (data) {
         setCoffees(
           (data as Coffee[]).map((coffee, index) => ({
             ...coffee,
-            price: getINRPriceByName(coffee.name, Number(coffee.price)),
+            price: Number(coffee.price),
             thumbnail_url: coffee.thumbnail_url || getCoffeeImageByName(coffee.name, index),
           }))
         );

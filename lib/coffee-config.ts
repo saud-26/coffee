@@ -35,18 +35,3 @@ export function getCoffeeImageByName(name: string, index = 0): string {
 
   return PRODUCT_IMAGE_FALLBACKS[index % PRODUCT_IMAGE_FALLBACKS.length];
 }
-
-export function getINRPriceByName(name: string, fallback = 199): number {
-  const normalized = name.toLowerCase();
-
-  if (normalized.includes("combo") || normalized.includes("bundle")) return 599;
-  if (normalized.includes("espresso")) return 149;
-  if (normalized.includes("cappuccino")) return 199;
-  if (normalized.includes("latte")) return 219;
-  if (normalized.includes("cold brew")) return 249;
-  if (normalized.includes("americano")) return 179;
-  if (normalized.includes("mocha")) return 229;
-
-  const safeFallback = Number.isFinite(fallback) ? fallback : 199;
-  return safeFallback < 100 ? 199 : safeFallback;
-}

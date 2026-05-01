@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Coffee } from "@/lib/types";
 import Link from "next/link";
 import { formatINR } from "@/lib/currency";
-import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
+import { getCoffeeImageByName } from "@/lib/coffee-config";
 
 export default function AdminProducts() {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    fetchCoffees();
-  }, []);
-
-  const fetchCoffees = async () => {
+  const fetchCoffees = useCallback(async () => {
     const { data } = await supabase
       .from("coffees")
       .select("*")
@@ -27,23 +23,31 @@ export default function AdminProducts() {
       setCoffees(
         (data as Coffee[]).map((coffee, index) => ({
           ...coffee,
-          price: getINRPriceByName(coffee.name, Number(coffee.price)),
+          price: Number(coffee.price),
           thumbnail_url: coffee.thumbnail_url || getCoffeeImageByName(coffee.name, index),
         }))
       );
     }
     setLoading(false);
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchCoffees();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchCoffees]);
 
   const handleDelete = async (coffee: Coffee) => {
     const shouldDelete = window.confirm(`Delete "${coffee.name}"? This action cannot be undone.`);
     if (!shouldDelete) return;
 
     setDeletingId(coffee.id);
-    const { error } = await supabase.from("coffees").delete().eq("id", coffee.id);
+    const response = await fetch(`/api/products/${coffee.id}`, { method: "DELETE" });
     setDeletingId(null);
 
-    if (error) {
+    if (!response.ok) {
       alert("Failed to delete product.");
       return;
     }

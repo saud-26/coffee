@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/lib/store/cart";
 import Link from "next/link";
@@ -14,10 +14,9 @@ export default function CartSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<Profile | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    setIsMounted(true);
     const getUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
@@ -25,7 +24,10 @@ export default function CartSidebar() {
         setUser(data || { id: authUser.id, email: authUser.email || "", full_name: "", role: "customer", avatar_url: "", created_at: "" });
       }
     };
-    getUser();
+    const timer = window.setTimeout(() => {
+      setIsMounted(true);
+      void getUser();
+    }, 0);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
@@ -36,8 +38,11 @@ export default function CartSidebar() {
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const handleLogout = async () => {
     try {
@@ -86,8 +91,8 @@ export default function CartSidebar() {
       <div className="fixed top-20 right-6 z-40 flex items-center gap-2">
         {user ? (
           <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="glass-card px-3 py-1.5 rounded-full text-xs font-medium hover:border-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-text-secondary)" }}>
-              Dashboard
+            <Link href="/account/orders" className="glass-card px-3 py-1.5 rounded-full text-xs font-medium hover:border-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-text-secondary)" }}>
+              Orders
             </Link>
             {user.role === "admin" && (
               <Link href="/admin" className="glass-card px-3 py-1.5 rounded-full text-xs font-medium hover:border-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-accent)" }}>

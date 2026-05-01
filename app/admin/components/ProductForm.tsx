@@ -4,12 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Coffee } from "@/lib/types";
-import { getCoffeeImageByName, getINRPriceByName } from "@/lib/coffee-config";
+import { getCoffeeImageByName } from "@/lib/coffee-config";
 
 interface ProductFormProps {
   initialData?: Partial<Coffee>;
   isEditing?: boolean;
 }
+
+type ProductFlag = "is_best_seller" | "is_new_arrival" | "is_featured";
+type ProductRoast = Coffee["roast"];
+
+const productFlags: Array<[ProductFlag, string]> = [
+  ["is_best_seller", "Best Seller"],
+  ["is_new_arrival", "New Arrival"],
+  ["is_featured", "Featured"],
+];
 
 export default function ProductForm({ initialData, isEditing = false }: ProductFormProps) {
   const router = useRouter();
@@ -20,13 +29,18 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    price: getINRPriceByName(initialData?.name || "", Number(initialData?.price) || 0),
+    price: Number(initialData?.price ?? 0),
     origin: initialData?.origin || "",
     roast: initialData?.roast || "Medium",
     weight: initialData?.weight || "340g",
     tags: initialData?.tags?.join(", ") || "",
     badge: initialData?.badge || "",
     in_stock: initialData?.in_stock ?? true,
+    grind_options: initialData?.grind_options?.join(", ") || "Whole Bean, Espresso, French Press, Pour Over",
+    is_best_seller: initialData?.is_best_seller ?? false,
+    is_new_arrival: initialData?.is_new_arrival ?? false,
+    is_featured: initialData?.is_featured ?? false,
+    date_added: initialData?.date_added?.slice(0, 10) || new Date().toISOString().slice(0, 10),
     thumbnail_url: initialData?.thumbnail_url || "",
   });
 
@@ -34,7 +48,6 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
     setFormData((prev) => ({
       ...prev,
       name,
-      price: getINRPriceByName(name, Number(prev.price) || 0),
       thumbnail_url: prev.thumbnail_url || getCoffeeImageByName(name),
     }));
   };
@@ -62,8 +75,8 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
         .getPublicUrl(filePath);
 
       setFormData((prev) => ({ ...prev, thumbnail_url: publicUrl }));
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Image upload failed.");
     } finally {
       setUploading(false);
     }
@@ -73,29 +86,38 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
     e.preventDefault();
     setLoading(true);
 
+    const price = Number(formData.price);
+    if (!Number.isFinite(price) || price < 0) {
+      alert("Enter a valid numeric price.");
+      setLoading(false);
+      return;
+    }
+
     const dataToSave = {
       ...formData,
+      price: Number(price.toFixed(2)),
       tags: formData.tags.split(",").map(t => t.trim()).filter(Boolean),
+      grind_options: formData.grind_options.split(",").map(t => t.trim()).filter(Boolean),
     };
 
     try {
-      if (isEditing && initialData?.id) {
-        const { error } = await supabase
-          .from("coffees")
-          .update(dataToSave)
-          .eq("id", initialData.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("coffees")
-          .insert([dataToSave]);
-        if (error) throw error;
+      const endpoint = isEditing && initialData?.id ? `/api/products/${initialData.id}` : "/api/products";
+      const method = isEditing && initialData?.id ? "PATCH" : "POST";
+      const response = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSave),
+      });
+
+      const result = await response.json() as { error?: string };
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save product.");
       }
-      
+
       router.push("/admin/products");
       router.refresh();
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to save product.");
       setLoading(false);
     }
   };
@@ -114,7 +136,7 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
           </div>
           <div>
             <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Price (₹)</label>
-            <input required type="number" step="1" min={0} value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className={inputClass} style={inputStyle} />
+            <input required type="number" step="0.01" min={0} value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className={inputClass} style={inputStyle} />
           </div>
         </div>
 
@@ -130,7 +152,7 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
           </div>
           <div>
             <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Roast</label>
-            <select value={formData.roast} onChange={e => setFormData({...formData, roast: e.target.value as any})} className={inputClass} style={inputStyle}>
+            <select value={formData.roast} onChange={e => setFormData({...formData, roast: e.target.value as ProductRoast})} className={inputClass} style={inputStyle}>
               <option value="Light">Light</option>
               <option value="Medium">Medium</option>
               <option value="Medium-Dark">Medium-Dark</option>
@@ -152,6 +174,31 @@ export default function ProductForm({ initialData, isEditing = false }: ProductF
             <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Badge (optional)</label>
             <input type="text" value={formData.badge} onChange={e => setFormData({...formData, badge: e.target.value})} className={inputClass} style={inputStyle} placeholder="Best Seller" />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Grind Options</label>
+          <input type="text" value={formData.grind_options} onChange={e => setFormData({...formData, grind_options: e.target.value})} className={inputClass} style={inputStyle} placeholder="Whole Bean, Espresso, French Press" />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {productFlags.map(([key, label]) => (
+            <label key={key} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: "rgba(61, 40, 32, 0.35)", border: "1px solid var(--coffee-border)" }}>
+              <input
+                type="checkbox"
+                checked={formData[key]}
+                onChange={e => setFormData({...formData, [key]: e.target.checked})}
+                className="w-4 h-4"
+                style={{ accentColor: "var(--coffee-accent)" }}
+              />
+              <span className="text-sm" style={{ color: "var(--coffee-text-primary)" }}>{label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div>
+          <label className={labelClass} style={{ color: "var(--coffee-text-secondary)" }}>Date Added</label>
+          <input type="date" value={formData.date_added} onChange={e => setFormData({...formData, date_added: e.target.value})} className={inputClass} style={inputStyle} />
         </div>
 
         <div>

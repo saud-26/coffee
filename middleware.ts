@@ -31,8 +31,14 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Protect /dashboard routes
-  if (pathname.startsWith("/dashboard") && !user) {
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/account/orders";
+    return NextResponse.redirect(url);
+  }
+
+  // Protect account routes
+  if (pathname.startsWith("/account") && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     url.searchParams.set("redirect", pathname);
@@ -66,5 +72,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/account/:path*", "/admin/:path*"],
 };

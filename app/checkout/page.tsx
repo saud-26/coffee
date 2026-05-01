@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ShippingInfo } from "@/lib/types";
 import { formatINR } from "@/lib/currency";
-import { toLegacyOrderStatus } from "@/lib/order-status";
 
 type Step = "shipping" | "payment" | "confirmation";
 
@@ -101,6 +100,7 @@ export default function CheckoutPage() {
       .insert({
         user_id: userId,
         status: "payment_pending_verification",
+        payment_status: "pending_verification",
         total_price: totalAmount,
         shipping_name: shipping.name,
         shipping_address: shipping.address,
@@ -111,35 +111,14 @@ export default function CheckoutPage() {
       .select()
       .single();
 
-    let createdOrder = order;
-
     if (orderError || !order) {
-      const { data: legacyOrder, error: legacyOrderError } = await supabase
-        .from("orders")
-        .insert({
-          user_id: userId,
-          status: toLegacyOrderStatus("payment_pending_verification"),
-          total_price: totalAmount,
-          shipping_name: shipping.name,
-          shipping_address: shipping.address,
-          shipping_city: shipping.city,
-          shipping_zip: shipping.zip,
-          shipping_phone: shipping.phone,
-        })
-        .select()
-        .single();
-
-      if (legacyOrderError || !legacyOrder) {
-        alert("Failed to create order. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      createdOrder = legacyOrder;
+      alert("Failed to create order. Please try again.");
+      setLoading(false);
+      return;
     }
 
     const orderItems = items.map((item) => ({
-      order_id: createdOrder.id,
+      order_id: order.id,
       coffee_id: item.coffee.id,
       coffee_name: item.coffee.name,
       coffee_price: item.coffee.price,
@@ -154,7 +133,14 @@ export default function CheckoutPage() {
       return;
     }
 
-    setOrderId(createdOrder.id);
+    await supabase.from("order_status_events").insert({
+      order_id: order.id,
+      status: "payment_pending_verification",
+      changed_by: userId,
+      note: "Payment submitted by customer",
+    });
+
+    setOrderId(order.id);
     clearCart();
     setStep("confirmation");
     setLoading(false);
@@ -425,7 +411,7 @@ export default function CheckoutPage() {
                       </p>
                     )}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                      <Link href="/dashboard" className="btn-accent px-6 py-2.5 rounded-full text-sm font-semibold">
+                      <Link href="/account/orders" className="btn-accent px-6 py-2.5 rounded-full text-sm font-semibold">
                         View Orders
                       </Link>
                       <Link

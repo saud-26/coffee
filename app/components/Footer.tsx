@@ -2,28 +2,32 @@
 
 const footerLinks = {
   shop: [
-    { label: "All Coffees", href: "#products" },
-    { label: "Best Sellers", href: "#products" },
-    { label: "New Arrivals", href: "#products" },
-    { label: "Gift Sets", href: "#products" },
-    { label: "Subscriptions", href: "#products" },
+    { label: "All Coffees", href: "/shop" },
+    { label: "Best Sellers", href: "/shop/best-sellers" },
+    { label: "New Arrivals", href: "/shop/new-arrivals" },
+    { label: "Gift Sets", href: "/shop/gift-sets" },
+    { label: "Subscriptions", href: "/shop/subscriptions" },
   ],
   company: [
-    { label: "Our Story", href: "#story" },
-    { label: "Process", href: "#process" },
-    { label: "Sustainability", href: "#process" },
-    { label: "Careers", href: "#" },
-    { label: "Press", href: "#" },
+    { label: "Our Story", href: "/company/story" },
+    { label: "Process", href: "/company/process" },
+    { label: "Sustainability", href: "/company/sustainability" },
+    { label: "Careers", href: "/company/careers" },
+    { label: "Press", href: "/company/press" },
   ],
   support: [
-    { label: "FAQ", href: "#" },
-    { label: "Shipping", href: "#" },
-    { label: "Returns", href: "#" },
-    { label: "Contact", href: "#contact" },
+    { label: "FAQ", href: "/support/faq" },
+    { label: "Shipping", href: "/support/shipping" },
+    { label: "Returns", href: "/support/returns" },
+    { label: "Contact", href: "/support/contact" },
   ],
 };
 
 export default function Footer() {
+  const openCookieSettings = () => {
+    window.dispatchEvent(new Event("open-cookie-settings"));
+  };
+
   return (
     <footer id="contact" className="border-t" style={{ borderColor: "var(--coffee-border)", backgroundColor: "var(--coffee-hero-bg)" }}>
       <div className="max-w-7xl mx-auto px-6 py-16">
@@ -71,11 +75,15 @@ export default function Footer() {
             © 2026 Brew & Co. All rights reserved.
           </p>
           <div className="flex gap-6">
-            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <a key={item} href="#" className="text-xs hover:text-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-border)" }}>
-                {item}
-              </a>
-            ))}
+            <a href="/support/returns" className="text-xs hover:text-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-border)" }}>
+              Returns
+            </a>
+            <a href="/support/contact" className="text-xs hover:text-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-border)" }}>
+              Contact
+            </a>
+            <button suppressHydrationWarning onClick={openCookieSettings} className="text-xs hover:text-[var(--coffee-accent)] transition-colors" style={{ color: "var(--coffee-border)" }}>
+              Cookie Settings
+            </button>
           </div>
         </div>
       </div>

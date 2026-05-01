@@ -26,7 +26,7 @@ export default function UpdatePasswordPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.push("/account/orders");
     }
   };
 

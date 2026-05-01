@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { OrderWithItems } from "@/lib/types";
 import { formatINR } from "@/lib/currency";
 import {
   ORDER_STATUS_OPTIONS,
   normalizeOrderStatus,
-  toLegacyOrderStatus,
   type CanonicalOrderStatus,
 } from "@/lib/order-status";
 
@@ -28,9 +27,9 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     const [
       { data: ordersData, count: ordersCount },
       { count: productsCount },
@@ -54,51 +53,38 @@ export default function AdminDashboard() {
       totalProducts: productsCount || 0,
     });
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
-    fetchDashboardData();
+    const timer = window.setTimeout(() => {
+      void fetchDashboardData();
+    }, 0);
 
     const channel = supabase
       .channel("admin-dashboard-orders-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        fetchDashboardData();
+        void fetchDashboardData();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
+      void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchDashboardData, supabase]);
 
   const handleStatusChange = async (orderId: string, newStatus: CanonicalOrderStatus) => {
     setUpdating(orderId);
-    let didUpdate = false;
+    const response = await fetch(`/api/admin/orders/${orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
-
-    if (error) {
-      const { error: legacyError } = await supabase
-        .from("orders")
-        .update({ status: toLegacyOrderStatus(newStatus) })
-        .eq("id", orderId);
-
-      if (legacyError) {
-        alert("Failed to update status");
-        setUpdating(null);
-        return;
-      }
-
-      didUpdate = true;
-    } else {
-      didUpdate = true;
-    }
-
-    if (didUpdate) {
+    if (response.ok) {
       await fetchDashboardData();
+    } else {
+      alert("Failed to update status");
     }
 
     setUpdating(null);
